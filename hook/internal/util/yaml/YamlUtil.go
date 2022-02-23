@@ -13,15 +13,16 @@ func GetConfig() config {
 }
 
 type config struct {
-	Hook struct{
-		GithubRepo string `yaml:"github_repo"`
-		ImageRepo string `yaml:"image_repo"`
-		Branches []string `yaml:"branches"`
+	Hook struct {
+		GithubRepo string   `yaml:"github_repo"`
+		ImageRepo  string   `yaml:"image_repo"`
+		Branches   []string `yaml:"branches"`
 	} `yaml:"hook"`
-	Quay struct{
-		User string `yaml:"user"`
+	Quay struct {
+		User     string `yaml:"user"`
 		Password string `yaml:"password"`
 	} `yaml:"quay"`
+	SlackMessageUrl string `yaml:"slack_message_url"`
 }
 
 func Init(filePath string) {

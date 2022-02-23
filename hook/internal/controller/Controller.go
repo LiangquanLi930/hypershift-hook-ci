@@ -9,6 +9,7 @@ import (
 	"hook/internal/pojo"
 	"hook/internal/util/file"
 	"hook/internal/util/log"
+	"hook/internal/util/slack"
 	"hook/internal/util/yaml"
 	"k8s.io/klog/v2"
 	"os"
@@ -23,7 +24,6 @@ func NewController() *Controller {
 	log.Info.Println("k8sClientService init")
 	return &Controller{}
 }
-
 
 func (c Controller) GithubHook(request *restful.Request, response *restful.Response) {
 	pushPayload := new(pojo.PushPayload)
@@ -42,14 +42,14 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 				if s == branch {
 					log.Info.Println("need to push")
 					// git clone
-					err = gitCloneRepo("https://github.com/LiangquanLi930/hypershift-hook-ci","buildimage")
+					err = gitCloneRepo("https://github.com/LiangquanLi930/hypershift-hook-ci", "buildimage")
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "git repo error", nil).Body)
 						return
 					}
 					// build image
-					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo+":"+shortCommitId)
+					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "build image error", nil).Body)
@@ -62,12 +62,13 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 						response.WriteEntity(pojo.NewResponse(500, "get dockerClient error", nil).Body)
 					}
 					//build image
-					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo+":latest")
+					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo + ":latest")
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "build image error", nil).Body)
+						slack.SendSlack(pushPayload.Repository.URL + " new push, branch:" + branch + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
 						return
-					}else {
+					} else {
 						response.WriteEntity(pojo.NewResponse(200, "successful", nil).Body)
 						return
 					}
@@ -80,8 +81,8 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 
 func verifyImage() error {
 	path := "./tmp"
-	err:=os.RemoveAll(path)
-	if err != nil{
+	err := os.RemoveAll(path)
+	if err != nil {
 		klog.Warning(err)
 	}
 	cmd := exec.Command("bash", "-c", "mkdir tmp && oc image extract quay.io/openshifttest/hypershift-client:test --path /hypershift:tmp")
@@ -92,19 +93,19 @@ func verifyImage() error {
 	}
 	if file.Exists("tmp/hypershift") {
 		return nil
-	}else {
+	} else {
 		return errors.New("file 'hypershift' not exist")
 	}
 }
 
-func gitCloneRepo(url string,branch string) error {
+func gitCloneRepo(url string, branch string) error {
 	path := "./temp"
-	err:=os.RemoveAll(path)
-	if err != nil{
+	err := os.RemoveAll(path)
+	if err != nil {
 		log.Warning.Println(err)
 	}
 	//git clone
-	repo,err := git.Clone(url, "./temp")
+	repo, err := git.Clone(url, "./temp")
 	if err != nil {
 		log.Warning.Println(err)
 		return err
