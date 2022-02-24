@@ -46,6 +46,7 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "git repo error", nil).Body)
+						slack.SendSlack("error! git clone: " + err.Error())
 						return
 					}
 					// build image
@@ -53,6 +54,7 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "build image error", nil).Body)
+						slack.SendSlack("build image error! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
 						return
 					}
 					//验证
@@ -60,16 +62,19 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "get dockerClient error", nil).Body)
+						slack.SendSlack("verifyImage error! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
+						return
 					}
 					//build image
 					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo + ":latest")
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "build image error", nil).Body)
-						slack.SendSlack(pushPayload.Repository.URL + " new push, branch:" + branch + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
+						slack.SendSlack("build image error! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
 						return
 					} else {
 						response.WriteEntity(pojo.NewResponse(200, "successful", nil).Body)
+						slack.SendSlack("successful! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
 						return
 					}
 				}
