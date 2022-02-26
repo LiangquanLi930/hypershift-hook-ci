@@ -58,7 +58,7 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 						return
 					}
 					//验证
-					err = verifyImage()
+					err = verifyImage(yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "get dockerClient error", nil).Body)
@@ -84,19 +84,15 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 	}
 }
 
-func verifyImage() error {
-	path := "./tmp"
-	err := os.RemoveAll(path)
-	if err != nil {
-		klog.Warning(err)
-	}
-	cmd := exec.Command("bash", "-c", "mkdir tmp && oc image extract quay.io/openshifttest/hypershift-client:test --path /hypershift:tmp")
+func verifyImage(image string) error {
+	cmd := exec.Command("sh", "-c", "rm -rf tmp && mkdir tmp && oc image extract "+image+" --path /hypershift:tmp")
 	out, err := cmd.CombinedOutput()
+	trimmed := strings.TrimSpace(string(out))
+	klog.Info(trimmed)
 	if err != nil {
-		trimmed := strings.TrimSpace(string(out))
-		klog.Info(trimmed)
+		klog.Warning(trimmed)
 	}
-	if file.Exists("tmp/hypershift") {
+	if file.Exists("/run/tmp/hypershift") {
 		return nil
 	} else {
 		return errors.New("file 'hypershift' not exist")
