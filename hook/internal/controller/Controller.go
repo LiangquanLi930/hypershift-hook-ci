@@ -49,12 +49,42 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 						slack.SendSlack("error! git clone: " + err.Error())
 						return
 					}
+					//get dockerClient
+					var cli *client.Client
+					cli, err = client.NewClientWithOpts(client.FromEnv)
+					if err != nil {
+						log.Warning.Println(err)
+						return
+					}
+
 					// build image
-					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
+					err = buildAndPushImage(cli, yaml.GetConfig().Hook.ImageRepo+":"+shortCommitId)
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "build image error", nil).Body)
 						slack.SendSlack("build image error! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
+						return
+					}
+
+					// get newImageSha256,latestImageSha256
+					var newImageSha256, latestImageSha256 *string
+					err, newImageSha256 = docker.GetImageSha256(cli, yaml.GetConfig().Hook.ImageRepo+":"+shortCommitId)
+					if err != nil {
+						log.Warning.Println(err)
+						response.WriteEntity(pojo.NewResponse(500, "get image:sha256 error", nil).Body)
+						slack.SendSlack("get image:sha256 error! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
+						return
+					}
+					err, latestImageSha256 = docker.GetImageSha256(cli, yaml.GetConfig().Hook.ImageRepo+":latest")
+					if err != nil {
+						log.Warning.Println(err)
+						response.WriteEntity(pojo.NewResponse(500, "get image:sha256 error", nil).Body)
+						slack.SendSlack("get image:sha256 error! " + pushPayload.Repository.URL + " new push, branch:" + branch + " " + yaml.GetConfig().Hook.ImageRepo + ":" + shortCommitId)
+						return
+					}
+					if *newImageSha256 == *latestImageSha256 {
+						response.WriteEntity(pojo.NewResponse(200, "successful", nil).Body)
+						slack.SendSlack("client no change, new push branch:" + branch + ", " + pushPayload.Repository.URL + "/commit/" + shortCommitId)
 						return
 					}
 					//验证
@@ -66,7 +96,7 @@ func (c Controller) GithubHook(request *restful.Request, response *restful.Respo
 						return
 					}
 					//build image
-					err = buildAndPushImage(yaml.GetConfig().Hook.ImageRepo + ":latest")
+					err = buildAndPushImage(cli, yaml.GetConfig().Hook.ImageRepo+":latest")
 					if err != nil {
 						log.Warning.Println(err)
 						response.WriteEntity(pojo.NewResponse(500, "build image error", nil).Body)
@@ -121,15 +151,9 @@ func gitCloneRepo(url string, branch string) error {
 }
 
 // yaml.GetConfig().Hook.ImageRepo+":"+shortCommitId)
-func buildAndPushImage(imageName string) error {
-	//get dockerClient
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		log.Warning.Println(err)
-		return err
-	}
+func buildAndPushImage(cli *client.Client, imageName string) error {
 	//docker build
-	err = docker.BuildImage(cli, "Dockerfile", "./temp", imageName)
+	err := docker.BuildImage(cli, "Dockerfile", "./temp", imageName)
 	if err != nil {
 		log.Warning.Println(err)
 		return err
