@@ -1,6 +1,7 @@
-FROM golang as build
+FROM registry.ci.openshift.org/openshift/release:golang-1.17 as build
 
-RUN apt update && apt-get install -y upx-ucl
+RUN yum -y install upx
+WORKDIR /go
 
 RUN git clone https://github.com/openshift/hypershift.git && \
     cd hypershift/ && make hypershift && \
