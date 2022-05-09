@@ -1,4 +1,4 @@
-FROM golang as build
+FROM golang:1.17 as build
 
 RUN apt update && apt-get install -y upx-ucl
 
