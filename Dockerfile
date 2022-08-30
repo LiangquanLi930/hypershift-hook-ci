@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/openshift/release:golang-1.18 as build
+FROM quay.io/hypershiftqe/builder:latest as build
 
 RUN yum -y install upx
 WORKDIR /go
