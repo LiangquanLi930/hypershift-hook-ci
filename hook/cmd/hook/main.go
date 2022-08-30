@@ -6,6 +6,7 @@ import (
 	"hook/internal/util/log"
 	"hook/internal/util/yaml"
 	"net/http"
+	"os/exec"
 )
 
 func init() {
@@ -17,6 +18,13 @@ func init() {
 
 func main() {
 	log.Info.Println(yaml.GetConfig())
+	log.Info.Println("docker buildx config")
+	cmd := exec.Command("sh", "-c", `docker buildx create --name builder && docker buildx use builder && docker buildx inspect builder --bootstrap`)
+	_, err := cmd.Output()
+	if err != nil {
+		log.Warning.Println(err)
+		return
+	}
 	wsContainer := restful.NewContainer()
 	wsContainer.Router(restful.CurlyRouter{})
 	//Register
