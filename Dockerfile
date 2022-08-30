@@ -1,6 +1,5 @@
 FROM quay.io/hypershiftqe/builder:latest as build
 
-RUN yum -y install upx
 WORKDIR /go
 
 RUN git clone https://github.com/openshift/hypershift.git && \
