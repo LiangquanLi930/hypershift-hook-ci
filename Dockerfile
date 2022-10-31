@@ -1,4 +1,4 @@
-FROM quay.io/hypershiftqe/builder:latest as build
+FROM quay.io/openshifttest/hypershift-client:builder as build
 
 WORKDIR /go
 
