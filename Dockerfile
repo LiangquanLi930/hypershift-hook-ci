@@ -1,10 +1,9 @@
-FROM golang:1.20 as build
+FROM quay.io/openshifttest/hypershift-client:builder as build
 
-RUN apt update && apt-get install -y upx-ucl
+WORKDIR /go
 
-RUN git clone https://github.com/openshift/hypershift.git && \
-    cd hypershift/ && make hypershift && \
-    cd bin/ && upx hypershift
+RUN git config --global http.postBuffer 1048576000 && git clone https://github.com/openshift/hypershift.git && \
+    cd hypershift/ && make hypershift
 
 FROM alpine as runner
 COPY --from=build  /go/hypershift/bin/ /
