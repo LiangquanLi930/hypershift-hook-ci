@@ -1,4 +1,4 @@
-FROM golang:1.18 as build
+FROM golang:1.20 as build
 
 RUN apt update && apt-get install -y upx-ucl
 
